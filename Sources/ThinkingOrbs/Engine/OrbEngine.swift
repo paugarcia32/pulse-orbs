@@ -261,7 +261,9 @@ enum OrbEngine {
     private static func solveCycle(_ time: Double, _ count: Int, _ slotDur: Double,
                                    _ rest: Double) -> (amount: [Double], active: Int) {
         let cyc = 2 * Double(count) * slotDur + rest
-        let tc = time.truncatingRemainder(dividingBy: cyc)
+        // wrapped into [0, cyc) so a negative time can never index before the start
+        var tc = time.truncatingRemainder(dividingBy: cyc)
+        if tc < 0 { tc += cyc }
         var amount = [Double](repeating: 0, count: count)
         var active = -1
         if tc < 2 * Double(count) * slotDur {
@@ -675,7 +677,8 @@ enum OrbEngine {
     static func morph(_ size: Double, _ t: Double, _ o: OrbOpts) -> OrbFrame {
         let K = 3
         let segDur = morphHold + morphTime
-        let tc = t.truncatingRemainder(dividingBy: segDur * Double(K))
+        var tc = t.truncatingRemainder(dividingBy: segDur * Double(K))
+        if tc < 0 { tc += segDur * Double(K) }
         let k = Int((tc / segDur).rounded(.down))
         let local = tc - Double(k) * segDur
         let m: Double = {

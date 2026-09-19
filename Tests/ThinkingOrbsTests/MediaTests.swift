@@ -29,6 +29,14 @@ private enum Page: String, CaseIterable {
         }
     }
 
+    /// GitHub's zebra stripe, behind every second row of a README table.
+    var stripe: Color {
+        switch self {
+        case .light: return Color(.sRGB, red: 246 / 255, green: 248 / 255, blue: 250 / 255)
+        case .dark: return Color(.sRGB, red: 21 / 255, green: 27 / 255, blue: 35 / 255)
+        }
+    }
+
     var surface: Color {
         switch self {
         case .light: return Color(.sRGB, red: 246 / 255, green: 248 / 255, blue: 250 / 255)
@@ -49,10 +57,34 @@ private enum Page: String, CaseIterable {
 @MainActor
 struct MediaTests {
 
-    /// 30 ms a frame (GIF delays are in centiseconds), 4.02 s of loop plus
-    /// 0.51 s rendered past the end for the seam crossfade.
+    /// 30 ms a frame (GIF delays are in centiseconds).
     static let frameStep = 0.03
-    static let frameCount = 151
+
+    /// How one clip loops: `loop` frames from `start` seconds, plus `seam`
+    /// frames rendered past the end and crossfaded into the opening, so a
+    /// design that never repeats still loops without a jump.
+    struct Clip {
+        var start = 0.0
+        var loop = 134          // 4.02 s
+        var seam = 10           // 0.3 s
+    }
+
+    /// Designs that do repeat get exactly one cycle. Shaping loops cleanly with
+    /// no seam at all. Solving shows its whole scramble and solve, with the
+    /// seam placed in the solved rest, where the two ends match.
+    static func clip(for design: OrbDesign, size: OrbSize) -> Clip {
+        let speed = OrbPresets.resolve(design, size).speed
+        switch design {
+        case .shaping:
+            let cycle = (1.4 + 0.9) * 3 / speed
+            return Clip(start: 0, loop: Int((cycle / frameStep).rounded()), seam: 0)
+        case .solving:
+            let cycle = (2 * 14 * 0.42 + 1.2) / speed
+            return Clip(start: 11.9 / speed, loop: Int((cycle / frameStep).rounded()), seam: 10)
+        default:
+            return Clip()
+        }
+    }
 
     @Test(.enabled(if: env["ORBS_MEDIA_OUT"] != nil))
     func rendersReadmeMedia() throws {
@@ -60,13 +92,14 @@ struct MediaTests {
 
         for page in Page.allCases {
             // one clip per design and size, for the table
-            for design in OrbDesign.allCases {
+            // (every second row of the README table sits on GitHub's stripe)
+            for (row, design) in OrbDesign.allCases.enumerated() {
                 for size in OrbSize.allCases {
                     let name = "\(design.rawValue)-\(size == .regular ? "regular" : "small")-\(page.rawValue)"
-                    try render(name, into: root) {
+                    try render(name, into: root, clip: Self.clip(for: design, size: size)) {
                         ThinkingOrb(design, size: size)
                             .frame(width: size.points, height: size.points)
-                            .background(page.background)
+                            .background(row.isMultiple(of: 2) ? page.background : page.stripe)
                     }
                 }
             }
@@ -123,18 +156,20 @@ struct MediaTests {
             .overlay(Capsule().stroke(page.hairline, lineWidth: 1))
     }
 
-    /// Renders `frameCount` frames of `content` with the clock pinned, as
-    /// `<name>/0000.png` …, in the page's colour scheme.
-    private func render<Content: View>(_ name: String, into root: URL, scale: CGFloat = 3,
+    /// Renders a clip's frames with the clock pinned, as `<name>/0000.png` …,
+    /// in the page's colour scheme, with a `clip.json` saying how it loops.
+    private func render<Content: View>(_ name: String, into root: URL, scale: CGFloat = 3, clip: Clip = Clip(),
                                        @ViewBuilder content: () -> Content) throws {
         let dir = root.appendingPathComponent(name)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try #"{"loop": \#(clip.loop), "seam": \#(clip.seam)}"#.write(
+            to: dir.appendingPathComponent("clip.json"), atomically: true, encoding: .utf8)
         let scheme: ColorScheme = name.hasSuffix("-dark") ? .dark : .light
         let view = content()
-        for i in 0..<Self.frameCount {
+        for i in 0..<(clip.loop + clip.seam) {
             let renderer = ImageRenderer(content: view
                 .environment(\.colorScheme, scheme)
-                .environment(\.orbClockOverride, Double(i) * Self.frameStep))
+                .environment(\.orbClockOverride, clip.start + Double(i) * Self.frameStep))
             renderer.scale = scale
             let image = try #require(renderer.cgImage, "\(name) frame \(i)")
             let url = dir.appendingPathComponent(String(format: "%04d.png", i))

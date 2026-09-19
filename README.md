@@ -8,7 +8,7 @@
 <h1 align="center">ThinkingOrbs</h1>
 
 <p align="center">
-  Dotted, honestly-3D loading indicators for AI and agent interfaces in SwiftUI.<br />
+  Dotted, genuinely 3D loading indicators for AI and agent interfaces in SwiftUI.<br />
   Nine hand-tuned designs, two purpose-tuned sizes, one line to drop in.
 </p>
 
@@ -26,9 +26,9 @@
 ThinkingOrb(.searching)
 ```
 
-That is the whole integration. Each orb is a real 3D form, rotated, depth-shaded and z-sorted, drawn only in grayscale dots, so it sits quietly in any interface, light or dark. It pauses itself offscreen, keeps every orb on screen in phase, and respects Reduce Motion.
+That is the whole integration. Eight of the nine designs are real 3D forms, rotated, depth-shaded and z-sorted, and the ninth is a morphing outline. All of them are drawn only in grayscale dots, so they sit quietly in any interface, light or dark. Every orb pauses itself offscreen, stays in phase with the others on screen, and respects Reduce Motion.
 
-**[Watch it running on an iPhone](assets/demo.mp4)**
+**[Download the 30-second demo video (MP4)](assets/demo.mp4)**
 
 ## Installation
 
@@ -123,9 +123,17 @@ Text("Composing a reply…")
     .thinkingShimmer()
 ```
 
+Titles localize the way `Text` does. A string literal is looked up in your strings, a `String` value is shown as-is, and you can pass your own `Text`:
+
+```swift
+ThinkingOrbLabel("Searching the web…", design: .searching)                   // localized, like Text
+ThinkingOrbLabel("status.syncing", tableName: "Agent", design: .connecting)   // from your own table
+ThinkingOrbLabel(modelOutput, design: .composing)                             // a String shows as-is
+```
+
 ## Recipes
 
-**Map your agent's state to a design.** Switching designs crossfades:
+**Map your agent's state to a design.** Wrap it in a `ZStack` so the old and new orb share one slot while they crossfade:
 
 ```swift
 enum AgentPhase {
@@ -142,9 +150,11 @@ enum AgentPhase {
     }
 }
 
-ThinkingOrb(phase.orb)
-    .id(phase.orb)
-    .transition(.opacity.animation(.easeInOut(duration: 0.25)))
+ZStack {
+    ThinkingOrb(phase.orb)
+        .id(phase.orb)
+        .transition(.opacity.animation(.easeInOut(duration: 0.25)))
+}
 ```
 
 **An "assistant is typing" bubble:**
@@ -222,13 +232,13 @@ ThinkingOrb(.listening, isPaused: !isRecording)     // freezes on the current fr
 
 ## Accessibility
 
-- Each orb is an image with a per-design VoiceOver label ("Searching…"). Override it as usual with `.accessibilityLabel("Looking up flights…")`.
+- Each orb is an image with a per-design VoiceOver label ("Searching…"). The defaults are English, so in a localized app, or anywhere a more specific label helps, set your own as usual: `.accessibilityLabel("Looking up flights…")`.
 - `ThinkingOrbLabel` reads as one element: its title.
-- With Reduce Motion on, orbs show a single representative frame and the shimmer holds still. Both still follow light and dark.
+- With Reduce Motion on, orbs show a single representative frame and shimmering text holds still at full strength. With Increase Contrast on, shimmering text also stays at full strength.
 
 ## Performance
 
-One `Canvas` per orb inside one `TimelineView`, with no view per dot. Orbs park their timeline while scrolled out of view (from the very first layout, so orbs that start below the fold never run) and while the app is in the background.
+One `Canvas` per orb inside one `TimelineView`, with no view per dot. Orbs park their timeline while scrolled out of view, on either axis, so a card in a carousel that has itself scrolled off the page stops too. That holds from the very first layout, so orbs that start below the fold never run. They also park while the app is in the background.
 
 Measured on an iPhone 17 Pro Max, the heaviest design (`.composing`, 566 dots) takes 65 µs to compute a frame and 0.27 ms to rasterize it, against 8.3 ms per frame at 120 Hz. Most designs cost a fraction of that.
 
@@ -237,10 +247,11 @@ Measured on an iPhone 17 Pro Max, the heaviest design (`.composing`, 566 dots) t
 The geometry is public, for SpriteKit, Metal, a watch complication or a pen plotter. A frame is a finished draw list: every value is final and the array order is the draw order.
 
 ```swift
-let frame = OrbDesign.connecting.frame(size: .regular, at: 2.5)   // seconds on the orb clock
+let frame = OrbDesign.connecting.frame(size: .regular, at: seconds)
 
 for line in frame.lines {       // draw edges first
-    // line.x1, line.y1, line.x2, line.y2, line.w
+    // line.x1, line.y1, line.x2, line.y2, line.w in points
+    // line.white and line.a are ink and opacity, as for dots
 }
 for dot in frame.dots {         // then dots, far to near
     // dot.x, dot.y, dot.r in points, in a 64 × 64 box
@@ -248,14 +259,16 @@ for dot in frame.dots {         // then dots, far to near
 }
 ```
 
+`seconds` is any running time in seconds at normal speed, such as a `TimelineView` date's `timeIntervalSinceReferenceDate`. The design's tuned speed is applied for you.
+
 ## Faithful to the original
 
 These are Jakub Antalik's designs, and the port keeps them exact:
 
 - **Transcribed, not reinterpreted.** The engine is a formula-by-formula port of the original TypeScript, down to evaluation order and JavaScript's rounding and loop semantics.
-- **Golden vectors.** The test suite checks every dot and line of all 18 designs and sizes at four instants against the web library's published geometry, to 1e-4. It runs on iPhone.
+- **Golden vectors.** The test suite checks every dot and line of all nine designs at both sizes, at four instants each, against the web library's published geometry, to 1e-4. It runs on iPhone.
 - **A dense differential sweep.** `Scripts/differential-sweep.sh` runs the original engine under Node and streams 725,149 frames (213 million dots) into the Swift engine on an iPhone simulator. Every frame matches, with a worst difference of 2e-9.
-- **Pixels.** Rendered side by side with Chrome's canvas, tiles differ by about one shade in 255. The iPhone draws the very smallest dots at their true size, where Chrome draws them faintly.
+- **Pixels.** Rendered side by side with Chrome's canvas, tiles differ by less than one shade in 255 on average, with the differences in the antialiased edges of the dots. The iPhone draws the very smallest dots at their true size, where Chrome draws them faintly.
 
 ## Requirements
 

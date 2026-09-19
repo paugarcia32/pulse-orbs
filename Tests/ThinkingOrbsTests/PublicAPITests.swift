@@ -42,6 +42,28 @@ struct PublicAPITests {
         }
     }
 
+    /// Any time a caller can produce is safe: before the clock's origin, after
+    /// days of uptime, or not a number at all.
+    @Test(arguments: OrbDesign.allCases, OrbSize.allCases)
+    func anyTimeIsSafe(design: OrbDesign, size: OrbSize) {
+        for time in [-0.01, -1, -7.3, -1e6, 0, 86_400 * 3, 1e9, .nan, .infinity, -.infinity] {
+            let frame = design.frame(size: size, at: time)
+            #expect(!frame.dots.isEmpty, "\(design) \(size) at \(time)")
+            #expect(frame.dots.allSatisfy { $0.x.isFinite && $0.y.isFinite && $0.r.isFinite })
+        }
+    }
+
+    /// A string literal must pick the localized initializer, like Text's, and a
+    /// String value must be shown as-is.
+    @Test @MainActor
+    func literalTitlesAreLocalized() {
+        let literal = ThinkingOrbLabel("Thinking…", design: .breathing)
+        let value: String = "Thinking…"
+        let verbatim = ThinkingOrbLabel(value, design: .breathing)
+        #expect(String(describing: literal.title).contains("Localized"))
+        #expect(!String(describing: verbatim.title).contains("Localized"))
+    }
+
     @Test @MainActor
     func viewsRenderInBothInks() throws {
         func meanLuma(_ scheme: ColorScheme) throws -> Double {

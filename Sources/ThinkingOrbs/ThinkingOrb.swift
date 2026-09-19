@@ -9,7 +9,7 @@
 
 import SwiftUI
 
-/// A dotted, honestly-3D loading indicator for AI and agent interfaces.
+/// A dotted, genuinely 3D loading indicator for AI and agent interfaces.
 ///
 /// ```swift
 /// ThinkingOrb(.searching)                       // 64 pt
@@ -152,7 +152,8 @@ enum OrbClock {
     static let origin = Date()
 
     static func seconds(at date: Date) -> Double {
-        date.timeIntervalSince(origin)
+        // a timeline date can predate the origin, which is set on first use
+        max(0, date.timeIntervalSince(origin))
     }
 }
 
@@ -163,14 +164,19 @@ extension EnvironmentValues {
 }
 
 extension View {
-    /// Reports whether any of this view is inside its scroll view's visible
-    /// bounds, from the very first layout on. (`onScrollVisibilityChange`
-    /// only reports crossings, so a view that starts below the fold would
-    /// never hear that it is hidden.) Outside a scroll view it reports true.
+    /// Reports whether any of this view is inside the visible bounds of the
+    /// scroll views around it, from the very first layout on.
+    /// (`onScrollVisibilityChange` only reports crossings, so a view that
+    /// starts below the fold would never hear that it is hidden.) Both axes
+    /// are checked, so a card in a horizontal carousel that has itself been
+    /// scrolled off a vertical page counts as hidden. Outside any scroll view
+    /// it reports true.
     func onViewportVisibilityChange(_ action: @escaping (Bool) -> Void) -> some View {
         onGeometryChange(for: Bool.self) { proxy in
-            guard let viewport = proxy.bounds(of: .scrollView) else { return true }
-            return viewport.intersects(CGRect(origin: .zero, size: proxy.size))
+            let own = CGRect(origin: .zero, size: proxy.size)
+            let vertical = proxy.bounds(of: .scrollView(axis: .vertical))
+            let horizontal = proxy.bounds(of: .scrollView(axis: .horizontal))
+            return (vertical?.intersects(own) ?? true) && (horizontal?.intersects(own) ?? true)
         } action: { visible in
             action(visible)
         }

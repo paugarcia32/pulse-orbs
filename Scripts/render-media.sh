@@ -4,9 +4,12 @@
 # with the orb clock pinned, so the output is exact and repeatable.
 #
 # usage: Scripts/render-media.sh [simulator name or UDID]   (default: iPhone 17 Pro)
-# needs: Xcode, python3 with Pillow + numpy, ffmpeg
+# needs: Xcode, python3 with Pillow + numpy, ffmpeg (gifsicle optional)
 set -euo pipefail
 cd "$(dirname "$0")/.."
+
+command -v ffmpeg >/dev/null || { echo "needs ffmpeg (brew install ffmpeg)"; exit 1; }
+python3 -c 'import PIL, numpy' 2>/dev/null || { echo "needs Pillow and numpy (pip3 install pillow numpy)"; exit 1; }
 
 WORK="$PWD/Scripts/.work"
 SIM="${1:-iPhone 17 Pro}"

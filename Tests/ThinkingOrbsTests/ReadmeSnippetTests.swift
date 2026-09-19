@@ -64,9 +64,11 @@ private struct AgentStatus: View {
     let phase: AgentPhase
 
     var body: some View {
-        ThinkingOrb(phase.orb)
-            .id(phase.orb)
-            .transition(.opacity.animation(.easeInOut(duration: 0.25)))
+        ZStack {   // both orbs share one slot while they crossfade
+            ThinkingOrb(phase.orb)
+                .id(phase.orb)
+                .transition(.opacity.animation(.easeInOut(duration: 0.25)))
+        }
     }
 }
 
@@ -152,6 +154,18 @@ private struct SpeedAndPause: View {
     }
 }
 
+private struct LocalizedLabels: View {
+    let modelOutput: String
+
+    var body: some View {
+        VStack {
+            ThinkingOrbLabel("Searching the web…", design: .searching)                   // localized, like Text
+            ThinkingOrbLabel("status.syncing", tableName: "Agent", design: .connecting)   // from your own table
+            ThinkingOrbLabel(modelOutput, design: .composing)                             // a String shows as-is
+        }
+    }
+}
+
 private struct CustomLabel: View {
     var body: some View {
         ThinkingOrb(.searching)
@@ -159,12 +173,13 @@ private struct CustomLabel: View {
     }
 }
 
-private func drawItYourself() -> Int {
-    let frame = OrbDesign.connecting.frame(size: .regular, at: 2.5)
+private func drawItYourself(seconds: Double = 2.5) -> Int {
+    let frame = OrbDesign.connecting.frame(size: .regular, at: seconds)
 
     var marks = 0
     for line in frame.lines {       // draw edges first
         _ = (line.x1, line.y1, line.x2, line.y2, line.w)
+        _ = (line.white, line.a)    // ink and opacity, as for dots
         marks += 1
     }
     for dot in frame.dots {         // then dots, far to near
@@ -209,6 +224,7 @@ struct ReadmeSnippetTests {
         #expect(renders(Theme()))
         #expect(renders(SpeedAndPause(isRecording: true)))
         #expect(renders(CustomLabel()))
+        #expect(renders(LocalizedLabels(modelOutput: "Drafting the summary…")))
         #expect(renders(AllDesigns()))
         #expect(drawItYourself() > 40)
     }

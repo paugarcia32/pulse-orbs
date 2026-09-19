@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Turns the PNG sequences MediaTests renders into seamless looping GIFs.
 
-Each clip is rendered a little past its loop length. The overhang is
-crossfaded into the opening frames, so the last frame flows straight into
-the first and the loop has no visible seam.
+Each clip folder carries a clip.json: `loop` frames, plus `seam` frames
+rendered past the end. The overhang is crossfaded into the opening frames,
+so the last frame flows straight into the first. Designs that truly repeat
+are rendered as exactly one cycle with no seam.
 
 usage: make_gifs.py <frames dir> <assets dir>
 """
+import json
 import os
 import shutil
 import subprocess
@@ -17,7 +19,6 @@ import numpy as np
 from PIL import Image
 
 FRAME_MS = 30          # must match MediaTests.frameStep
-SEAM = 17              # frames rendered past the loop, crossfaded into its head
 
 src, dst = sys.argv[1], sys.argv[2]
 os.makedirs(os.path.join(dst, "designs"), exist_ok=True)
@@ -26,13 +27,16 @@ for clip in sorted(os.listdir(src)):
     folder = os.path.join(src, clip)
     if not os.path.isdir(folder):
         continue
+    with open(os.path.join(folder, "clip.json")) as f:
+        spec = json.load(f)
     names = sorted(n for n in os.listdir(folder) if n.endswith(".png"))
     frames = [np.asarray(Image.open(os.path.join(folder, n)).convert("RGB")).astype(np.float32) for n in names]
-    loop = len(frames) - SEAM
+    loop, seam = spec["loop"], spec["seam"]
+    assert len(frames) == loop + seam, f"{clip}: {len(frames)} frames, expected {loop + seam}"
     out = []
     for i in range(loop):
-        if i < SEAM:
-            s = i / SEAM
+        if i < seam:
+            s = i / seam
             out.append((1 - s) * frames[i + loop] + s * frames[i])
         else:
             out.append(frames[i])

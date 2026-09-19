@@ -13,7 +13,9 @@ import Foundation
 public struct OrbDot: Equatable, Sendable {
     public var x: Double
     public var y: Double
-    /// Depth, roughly -1 (far) to 1 (near). Dots are already sorted by it.
+    /// Depth: larger is nearer. Its scale depends on the design (a unit sphere
+    /// for some, points for others, always 0 for `.shaping`), so use it for
+    /// ordering or relative shading only. Dots are already sorted by it.
     public var z: Double
     public var r: Double
     /// Ink on paper, 0 (darkest) to 1 (white). Mirror it (`1 - white`) on a
@@ -31,6 +33,7 @@ public struct OrbLine: Equatable, Sendable {
     public var y2: Double
     /// Ink on paper, as ``OrbDot/white``.
     public var white: Double
+    /// Opacity, 0 to 1.
     public var a: Double = 1
     /// Stroke width in points.
     public var w: Double

@@ -7,9 +7,13 @@
 # one in Swift on an iPhone simulator and compares every dot and line.
 #
 # usage: Scripts/differential-sweep.sh [simulator name or UDID]   (default: iPhone 17 Pro)
-# needs: Xcode, git, Node 23.6+
+# needs: Xcode, git, python3, Node 23.6+ (runs TypeScript directly)
 set -euo pipefail
 cd "$(dirname "$0")/.."
+
+command -v node >/dev/null || { echo "needs Node 23.6+"; exit 1; }
+node -e 'const [a, b] = process.versions.node.split(".").map(Number); process.exit(a > 23 || (a === 23 && b >= 6) ? 0 : 1)' \
+  || { echo "needs Node 23.6+ to run TypeScript directly (found $(node --version))"; exit 1; }
 
 UPSTREAM="https://github.com/Jakubantalik/thinking-orbs"
 PIN="de85557ca220332586d070d8788c0e1d6e877a0d"
@@ -44,7 +48,11 @@ echo '{ "type": "module" }' > "$WORK/package.json"   # plain ESM, whatever sits 
 mkfifo "$WORK/frames.fifo"
 (cd "$WORK" && node gen.ts spec.json frames.fifo 2> gen.log) &
 GEN=$!
-until [[ -s "$WORK/spec.json" ]]; do sleep 0.5; done
+trap 'kill $GEN 2>/dev/null || true' EXIT INT TERM
+until [[ -s "$WORK/spec.json" ]]; do
+  kill -0 $GEN 2>/dev/null || { echo "the web engine failed to start:"; cat "$WORK/gen.log"; exit 1; }
+  sleep 0.5
+done
 
 xcrun simctl boot "$UDID" 2>/dev/null || true
 echo "Streaming the web engine into the Swift engine on simulator $UDID…"

@@ -42,8 +42,9 @@ struct OrbResolved: Sendable {
     let opts: OrbOpts
 
     /// The frame at geometry time `t` (seconds × speed) for a `size`-point box.
+    /// Any time is safe, negative or not; a non-finite one draws time zero.
     func frame(size: Double, t: Double) -> OrbFrame {
-        OrbEngine.frame(mode, size: size, t: t, opts: opts)
+        OrbEngine.frame(mode, size: size, t: t.isFinite ? t : 0, opts: opts)
     }
 }
 

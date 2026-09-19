@@ -21,20 +21,42 @@ import SwiftUI
 /// VoiceOver reads it as one element: the title.
 public struct ThinkingOrbLabel: View {
 
-    private let title: Text
+    let title: Text
     private let design: OrbDesign
     private let size: OrbSize
     private let diameter: CGFloat?
     private let speed: Double
     private let isPaused: Bool
 
+    /// Creates a label whose title is a localized string key. A string literal
+    /// lands here, so it is looked up in your app's strings like `Text`'s.
+    ///
     /// - Parameters:
-    ///   - title: The status line, such as "Reading 14 files…".
+    ///   - titleKey: The status line, such as "Reading 14 files…".
+    ///   - tableName: The strings table to look the key up in.
+    ///   - bundle: The bundle holding that table. `nil` is the main bundle.
     ///   - design: Which orb to show beside it.
     ///   - size: The orb's tuned size. `.small` suits body and caption text.
     ///   - diameter: Draws the orb at another size, in points.
     ///   - speed: A multiplier on the orb's tuned speed.
     ///   - isPaused: Freezes the orb and the shimmer.
+    public init(
+        _ titleKey: LocalizedStringKey,
+        tableName: String? = nil,
+        bundle: Bundle? = nil,
+        design: OrbDesign,
+        size: OrbSize = .small,
+        diameter: CGFloat? = nil,
+        speed: Double = 1,
+        isPaused: Bool = false
+    ) {
+        self.init(Text(titleKey, tableName: tableName, bundle: bundle), design: design, size: size,
+                  diameter: diameter, speed: speed, isPaused: isPaused)
+    }
+
+    /// Creates a label that shows a string as-is, without localizing it:
+    /// for titles that are already localized, or are user or model content.
+    @_disfavoredOverload
     public init<S: StringProtocol>(
         _ title: S,
         design: OrbDesign,
@@ -43,23 +65,20 @@ public struct ThinkingOrbLabel: View {
         speed: Double = 1,
         isPaused: Bool = false
     ) {
-        self.init(text: Text(title), design: design, size: size, diameter: diameter, speed: speed, isPaused: isPaused)
+        self.init(Text(title), design: design, size: size, diameter: diameter, speed: speed, isPaused: isPaused)
     }
 
-    /// Creates a label whose title is a localized string key.
+    /// Creates a label from a `Text`, for a title you have styled or
+    /// localized yourself.
     public init(
-        _ titleKey: LocalizedStringKey,
+        _ title: Text,
         design: OrbDesign,
         size: OrbSize = .small,
         diameter: CGFloat? = nil,
         speed: Double = 1,
         isPaused: Bool = false
     ) {
-        self.init(text: Text(titleKey), design: design, size: size, diameter: diameter, speed: speed, isPaused: isPaused)
-    }
-
-    private init(text: Text, design: OrbDesign, size: OrbSize, diameter: CGFloat?, speed: Double, isPaused: Bool) {
-        self.title = text
+        self.title = title
         self.design = design
         self.size = size
         self.diameter = diameter
@@ -89,7 +108,9 @@ extension View {
     /// Text("Composing a reply…").thinkingShimmer()
     /// ```
     ///
-    /// Still under Reduce Motion, and parked while scrolled out of view.
+    /// Under Reduce Motion the band holds still and the content stays at full
+    /// strength, as it does with Increase Contrast. Parked while scrolled out
+    /// of view.
     public func thinkingShimmer(isActive: Bool = true) -> some View {
         modifier(ThinkingShimmer(isActive: isActive))
     }
@@ -102,13 +123,23 @@ private struct ThinkingShimmer: ViewModifier {
     let isActive: Bool
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.orbClockOverride) private var clockOverride
     @State private var isOnScreen = true
 
+    /// The dimmed base only exists as a backdrop for the moving band. With no
+    /// band (Reduce Motion) or when legibility comes first (Increase
+    /// Contrast), the text stays at full strength.
+    private var baseOpacity: Double {
+        if clockOverride == nil && reduceMotion { return 1 }
+        if contrast == .increased { return 1 }
+        return colorScheme == .dark ? 0.5 : 0.45
+    }
+
     func body(content: Content) -> some View {
         content
-            .opacity(colorScheme == .dark ? 0.5 : 0.45)
+            .opacity(baseOpacity)
             .overlay {
                 if let time = clockOverride {
                     band(content, at: time)
@@ -122,7 +153,7 @@ private struct ThinkingShimmer: ViewModifier {
     }
 
     private func band(_ content: Content, at seconds: Double) -> some View {
-        let q = (seconds / 2).truncatingRemainder(dividingBy: 1)
+        let q = (seconds / 2) - (seconds / 2).rounded(.down)
         return content
             .mask {
                 GeometryReader { geo in
