@@ -5,7 +5,7 @@
   </picture>
 </p>
 
-<h1 align="center">ThinkingOrbs</h1>
+<h1 align="center">PulseOrbs</h1>
 
 <p align="center">
   Dotted, genuinely 3D loading indicators for AI and agent interfaces in SwiftUI.<br />
@@ -22,6 +22,13 @@
 
 ---
 
+PulseOrbs is a maintained fork of
+[HAPLO ThinkingOrbs](https://github.com/haplollc/ThinkingOrbs). It started from
+upstream release `1.1.0` at commit
+[`e2c07bb`](https://github.com/haplollc/ThinkingOrbs/commit/e2c07bbdec4db797fb302300ef0159b1806a909f).
+The package keeps the `ThinkingOrbs` library and module names for source
+compatibility.
+
 ```swift
 ThinkingOrb(.searching)
 ```
@@ -35,14 +42,16 @@ That is the whole integration. Eight of the nine designs are real 3D forms, rota
 In Xcode: **File > Add Package Dependencies** and paste
 
 ```
-https://github.com/haplollc/ThinkingOrbs
+https://github.com/paugarcia32/pulse-orbs
 ```
+
+Until PulseOrbs publishes its first stable release, select the `main` branch.
 
 Or in `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/haplollc/ThinkingOrbs", from: "1.0.0")
+    .package(url: "https://github.com/paugarcia32/pulse-orbs.git", branch: "main")
 ]
 ```
 
