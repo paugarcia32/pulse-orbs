@@ -277,6 +277,20 @@ These are Jakub Antalik's designs, and the port keeps them exact:
 
 ## Development
 
+Launch the native macOS gallery:
+
+```bash
+swift run PulseOrbsDemo
+```
+
+Run the package tests:
+
+```bash
+swift test
+```
+
+With Xcode and an iOS simulator, run the platform and media checks:
+
 ```bash
 xcodebuild test -scheme ThinkingOrbs -destination "platform=iOS Simulator,name=iPhone 17 Pro"
 Scripts/differential-sweep.sh      # prove parity with the original web engine
