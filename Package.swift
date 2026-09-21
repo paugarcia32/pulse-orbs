@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "ThinkingOrbs",
+    name: "PulseOrbs",
     platforms: [
         .iOS(.v17),
         .macOS(.v14),
@@ -12,9 +12,14 @@ let package = Package(
     ],
     products: [
         .library(name: "ThinkingOrbs", targets: ["ThinkingOrbs"]),
+        .executable(name: "PulseOrbsDemo", targets: ["PulseOrbsDemo"]),
     ],
     targets: [
         .target(name: "ThinkingOrbs"),
+        .executableTarget(
+            name: "PulseOrbsDemo",
+            dependencies: ["ThinkingOrbs"]
+        ),
         .testTarget(
             name: "ThinkingOrbsTests",
             dependencies: ["ThinkingOrbs"],
